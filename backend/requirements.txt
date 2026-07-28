@@ -1,0 +1,4 @@
+fastapi==0.121.2
+uvicorn==0.38.0
+piper-tts==1.4.2
+huggingface_hub[hf_xet]==0.28.1
