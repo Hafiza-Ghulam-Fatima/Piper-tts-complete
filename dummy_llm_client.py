@@ -13,7 +13,8 @@ Then run this script:
 
 import requests
 
-API_URL = "http://127.0.0.1:8000/synthesize"
+#API_URL = "http://127.0.0.1:8000/synthesize"
+API_URL = "https://fyp-tts-api-production.up.railway.app/synthesize"
 
 # Pretend this text came from the LLM group's response.
 DUMMY_LLM_OUTPUT = "السلام علیکم، آپ کیسے ہیں؟ یہ ایک ٹیسٹ پیغام ہے۔"
