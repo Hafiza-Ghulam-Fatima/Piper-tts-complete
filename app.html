@@ -1,0 +1,343 @@
+# py -m http.server 5500
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Piper — Text to Speech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Sora:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B0E13; --surface:#141A24; --surface-2:#1B2230; --line:#2A3242;
+    --text:#ECE7D8; --muted:#8D93A0;
+    --gold:#E3A73E; --gold-dim:#6B4E1E;
+    --teal:#2FA894; --teal-dim:#154A42;
+    --danger:#D9694F;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; min-height:100vh; background:
+      radial-gradient(1100px 500px at 50% -10%, #1A2130 0%, var(--ink) 60%);
+    color:var(--text); font-family:'Sora',sans-serif;
+    padding:56px 20px 64px; display:flex; justify-content:center;
+  }
+  .page{max-width:620px; width:100%;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--teal); text-align:center;}
+  h1{font-family:'Fraunces',serif; font-weight:600; font-size:42px; text-align:center; margin:10px 0 8px; letter-spacing:-.01em;}
+  .sub{color:var(--muted); text-align:center; font-size:15px; line-height:1.6; max-width:440px; margin:0 auto 44px;}
+
+  /* ---- signature orb ---- */
+  .orb-wrap{display:flex; justify-content:center; margin-bottom:36px;}
+  .orb{width:126px; height:126px; position:relative;}
+  .orb svg{width:100%; height:100%; overflow:visible;}
+  .orb circle{fill:none; stroke:var(--gold); opacity:.55; transform-origin:63px 63px;}
+  .orb .core{fill:var(--gold); opacity:.9;}
+  .orb.ur circle{stroke:var(--teal);}
+  .orb.ur .core{fill:var(--teal);}
+  .orb .r1{animation:ripple 3.6s ease-out infinite;}
+  .orb .r2{animation:ripple 3.6s ease-out infinite; animation-delay:1.2s;}
+  .orb .r3{animation:ripple 3.6s ease-out infinite; animation-delay:2.4s;}
+  .orb.busy .r1{animation-duration:1.1s;}
+  .orb.busy .r2{animation-duration:1.1s; animation-delay:.37s;}
+  .orb.busy .r3{animation-duration:1.1s; animation-delay:.74s;}
+  @keyframes ripple{
+    0%{ r:14; opacity:.65; }
+    100%{ r:62; opacity:0; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .orb .r1,.orb .r2,.orb .r3{animation:none; opacity:.25;}
+  }
+
+  /* ---- steps ---- */
+  .step{display:none;}
+  .step.active{display:block; animation:rise .4s ease both;}
+  @keyframes rise{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  .step h2{font-size:18px; font-weight:600; text-align:center; margin:0 0 24px; color:var(--text);}
+  .back{
+    background:none; border:none; color:var(--muted); font-family:'IBM Plex Mono',monospace;
+    font-size:12px; cursor:pointer; padding:6px 0 18px; display:flex; align-items:center; gap:6px;
+  }
+  .back:hover{color:var(--text);}
+
+  .choice-row{display:flex; gap:16px; flex-wrap:wrap; justify-content:center;}
+  .choice-card{
+    flex:1 1 200px; max-width:240px; background:var(--surface); border:1px solid var(--line);
+    border-radius:var(--radius); padding:26px 20px; color:var(--text); cursor:pointer;
+    font-family:'Sora',sans-serif; font-size:16px; font-weight:600; text-align:center;
+    transition:border-color .18s ease, transform .18s ease, background .18s ease;
+  }
+  .choice-card .icon{display:block; margin:0 auto 12px; width:34px; height:34px; color:var(--gold);}
+  .choice-card:hover{border-color:var(--gold); transform:translateY(-2px); background:var(--surface-2);}
+  .choice-card:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+  .choice-card.ur-face{font-family:'Noto Nastaliq Urdu',serif; font-size:22px; font-weight:700;}
+  .choice-card.ur-face .icon{color:var(--teal);}
+
+  textarea{
+    width:100%; min-height:130px; background:var(--surface); border:1px solid var(--line);
+    border-radius:12px; color:var(--text); font-family:'Sora',sans-serif; font-size:15px;
+    padding:16px; line-height:1.6; resize:vertical;
+  }
+  textarea.ur{font-family:'Noto Nastaliq Urdu',serif; font-size:20px; direction:rtl; text-align:right;}
+  textarea:focus-visible{outline:2px solid var(--gold); outline-offset:1px;}
+  .char-count{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-align:right; margin-top:6px;}
+
+  .btn-primary{
+    width:100%; margin-top:18px; background:var(--gold); color:#1A1204; border:none;
+    border-radius:10px; padding:15px; font-family:'Sora',sans-serif; font-weight:700; font-size:15px;
+    cursor:pointer; transition:opacity .15s ease, transform .15s ease;
+  }
+  .btn-primary:hover:not(:disabled){transform:translateY(-1px);}
+  .btn-primary:disabled{opacity:.55; cursor:wait;}
+  .btn-primary:focus-visible{outline:2px solid var(--text); outline-offset:2px;}
+
+  .status{margin-top:14px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--muted); min-height:18px;}
+  .status.err{color:var(--danger);}
+
+  .result{margin-top:8px;}
+  .result audio{width:100%; margin-top:6px;}
+  .result-actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;}
+  .btn-secondary{
+    flex:1; text-align:center; background:var(--surface-2); border:1px solid var(--line); color:var(--text);
+    border-radius:9px; padding:11px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;
+    text-decoration:none; cursor:pointer;
+  }
+  .btn-secondary:hover{border-color:var(--gold);}
+
+  footer{margin-top:60px; text-align:center; color:var(--muted); font-size:12px; font-family:'IBM Plex Mono',monospace;}
+  footer a{color:var(--teal);}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="eyebrow">FYP · Text to Speech</div>
+  <h1>Piper</h1>
+  <p class="sub">Type a line, pick a language and a voice, and listen back — powered by an offline speech engine, running on our own server.</p>
+
+  <div class="orb-wrap"><div class="orb" id="orb">
+    <svg viewBox="0 0 126 126">
+      <circle class="r1" cx="63" cy="63" r="14"/>
+      <circle class="r2" cx="63" cy="63" r="14"/>
+      <circle class="r3" cx="63" cy="63" r="14"/>
+      <circle class="core" cx="63" cy="63" r="10"/>
+    </svg>
+  </div></div>
+
+  <!-- STEP 1: language -->
+  <section class="step active" id="step-lang">
+    <h2>Choose a language</h2>
+    <div class="choice-row">
+      <button class="choice-card" data-lang="en">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0Z"/><path d="M3 12h18M12 3a13 13 0 0 1 0 18 13 13 0 0 1 0-18Z"/></svg>
+        English
+      </button>
+      <button class="choice-card ur-face" data-lang="ur">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0Z"/><path d="M3 12h18M12 3a13 13 0 0 1 0 18 13 13 0 0 1 0-18Z"/></svg>
+        اردو
+      </button>
+    </div>
+  </section>
+
+  <!-- STEP 2: gender (English only) -->
+  <section class="step" id="step-voice">
+    <button class="back" data-to="step-lang">&larr; back</button>
+    <h2>Choose a voice</h2>
+    <div class="choice-row">
+      <button class="choice-card" data-gender="male">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M6 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        Male voice
+      </button>
+      <button class="choice-card" data-gender="female">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M12 13v6M9 16h6"/><path d="M6 21c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        Female voice
+      </button>
+    </div>
+  </section>
+
+  <!-- STEP 3: text entry -->
+  <section class="step" id="step-text">
+    <button class="back" id="text-back">&larr; back</button>
+    <h2 id="text-heading">What should it say?</h2>
+    <textarea id="text-input" placeholder="Type or paste a sentence here…" maxlength="600"></textarea>
+    <div class="char-count"><span id="char-count">0</span>/600</div>
+    <button class="btn-primary" id="generate-btn">Generate voice</button>
+    <div class="status" id="status"></div>
+
+    <div class="result" id="result" hidden>
+      <audio id="audio-player" controls></audio>
+      <div class="result-actions">
+        <a class="btn-secondary" id="download-link" download="piper-tts.wav">Download</a>
+        <button class="btn-secondary" id="regen-btn">Speak a different line</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>Runs on our own Piper TTS server — no data leaves the pipeline.</footer>
+</div>
+
+<script>
+(function(){
+  const API_BASE = "https://fyp-tts-api-production.up.railway.app";
+
+  const STATUS = {
+    generating: "Turning your text into speech…",
+    slow: "Still working — the server can take a little longer on its first request.",
+    error: "Couldn't generate audio. Please try again in a moment.",
+    done: "Done — press play below.",
+  };
+
+  const COPY = {
+    en: {
+      heading: "What should it say?",
+      placeholder: "Type or paste a sentence here…",
+      generate: "Generate voice",
+    },
+    ur: {
+      heading: "کیا بولنا ہے؟",
+      placeholder: "یہاں جملہ لکھیں…",
+      generate: "آواز بنائیں",
+    }
+  };
+
+  const state = { lang: null, gender: null };
+
+  const orb = document.getElementById('orb');
+  const stepLang = document.getElementById('step-lang');
+  const stepVoice = document.getElementById('step-voice');
+  const stepText = document.getElementById('step-text');
+  const textHeading = document.getElementById('text-heading');
+  const textInput = document.getElementById('text-input');
+  const charCount = document.getElementById('char-count');
+  const generateBtn = document.getElementById('generate-btn');
+  const statusEl = document.getElementById('status');
+  const resultEl = document.getElementById('result');
+  const audioPlayer = document.getElementById('audio-player');
+  const downloadLink = document.getElementById('download-link');
+  const regenBtn = document.getElementById('regen-btn');
+  const textBack = document.getElementById('text-back');
+
+  function showStep(step){
+    [stepLang, stepVoice, stepText].forEach(s => s.classList.remove('active'));
+    step.classList.add('active');
+  }
+
+  function resolveVoice(){
+    if (state.lang === 'ur') return 'ur_PK-fasih-medium';
+    if (state.lang === 'en' && state.gender === 'male') return 'en_US-ryan-high';
+    if (state.lang === 'en' && state.gender === 'female') return 'en_US-amy-medium';
+    return null;
+  }
+
+  function enterTextStep(){
+    const copy = COPY[state.lang];
+    textHeading.textContent = copy.heading;
+    textInput.placeholder = copy.placeholder;
+    generateBtn.textContent = copy.generate;
+    textInput.classList.toggle('ur', state.lang === 'ur');
+    orb.classList.toggle('ur', state.lang === 'ur');
+    resultEl.hidden = true;
+    statusEl.textContent = '';
+    statusEl.classList.remove('err');
+    showStep(stepText);
+    textInput.focus();
+  }
+
+  document.querySelectorAll('#step-lang [data-lang]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.lang = btn.dataset.lang;
+      if (state.lang === 'en') {
+        showStep(stepVoice);
+      } else {
+        enterTextStep();
+      }
+    });
+  });
+
+  document.querySelectorAll('#step-voice [data-gender]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.gender = btn.dataset.gender;
+      enterTextStep();
+    });
+  });
+
+  document.querySelectorAll('.back').forEach(btn => {
+    if (btn.id === 'text-back') return;
+    btn.addEventListener('click', () => showStep(document.getElementById(btn.dataset.to)));
+  });
+
+  textBack.addEventListener('click', () => {
+    if (state.lang === 'en') showStep(stepVoice);
+    else showStep(stepLang);
+  });
+
+  textInput.addEventListener('input', () => {
+    charCount.textContent = textInput.value.length;
+  });
+
+  let slowTimer = null;
+  let currentUrl = null;
+
+  async function generate(){
+    const text = textInput.value.trim();
+    const copy = COPY[state.lang];
+    if (!text) { textInput.focus(); return; }
+
+    const voice = resolveVoice();
+    generateBtn.disabled = true;
+    resultEl.hidden = true;
+    statusEl.classList.remove('err');
+    statusEl.textContent = STATUS.generating;
+    orb.classList.add('busy');
+
+    slowTimer = setTimeout(() => { statusEl.textContent = STATUS.slow; }, 6000);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
+    try {
+      const res = await fetch(API_BASE + '/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error('Request failed: ' + res.status);
+      const blob = await res.blob();
+
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = URL.createObjectURL(blob);
+
+      audioPlayer.src = currentUrl;
+      downloadLink.href = currentUrl;
+      resultEl.hidden = false;
+      statusEl.textContent = STATUS.done;
+      audioPlayer.play().catch(() => {});
+    } catch (err) {
+      statusEl.textContent = STATUS.error;
+      statusEl.classList.add('err');
+    } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(timeout);
+      orb.classList.remove('busy');
+      generateBtn.disabled = false;
+    }
+  }
+
+  generateBtn.addEventListener('click', generate);
+
+  regenBtn.addEventListener('click', () => {
+    resultEl.hidden = true;
+    textInput.value = '';
+    charCount.textContent = '0';
+    statusEl.textContent = '';
+    textInput.focus();
+  });
+})();
+</script>
+</body>
+</html>
