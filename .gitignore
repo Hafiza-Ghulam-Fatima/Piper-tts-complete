@@ -1,0 +1,4 @@
+﻿models/
+voices/
+*.onnx
+__pycache__/
